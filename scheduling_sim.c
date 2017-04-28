@@ -145,14 +145,28 @@ int main()
   srand(time(NULL));
   unsigned int rand_seed;
 
+  // experimental results will be logged to a csv file
+  FILE *result_file = fopen("results.csv", "w");
+  if (result_file == NULL) {
+    fprintf(stderr, "Could not open results.csv.\n");
+    return -1;
+  }
+
+  fprintf(result_file, "processors,jobs,max_delay,avg_total_work," \
+    "avg_inc_runtime,avg_dec_runtime\n");
+
   // 4, 8, 16 and 32 processors
   for (num_processors = 2; num_processors <= 64; num_processors *= 2) {
-    // 10, 100 and 1000 jobs
     for (num_jobs = 10; num_jobs <= 1000; num_jobs *= 10) {
-      // 100, 1000 and 10000 maximum delay. Minimum delay is implicitly 1.
+      if (num_jobs <= num_processors) { // no scheduling would take place
+        continue;
+      }
+      // max_delay is the longest unitless time a job can take. minimal delay
+      // is implicitly 1
       for (max_delay = 100; max_delay <= 10000; max_delay *= 10) {
         unsigned long long inc_time_acc = 0, dec_time_acc = 0;
         unsigned long long delay_sum_acc = 0;
+        // repeat trial with different random numbers to reduce variance
         for (i = 0; i < num_trials; i++) {
           rand_seed = rand();
 
@@ -171,13 +185,15 @@ int main()
           dec_time_acc += run_simulation(num_processors, num_jobs, delays);
           free(delays);
         }
-        printf("%d processors, %d jobs, %d max_delay, %llu average total work "
-            "-> %llu/%llu inc/dec runtime\n", num_processors, num_jobs,
-            max_delay, delay_sum_acc / num_trials, inc_time_acc / num_trials,
-            dec_time_acc / num_trials);
+        // dump results to csv
+        fprintf(result_file, "%d,%d,%d,%llu,%llu,%llu\n", num_processors,
+            num_jobs, max_delay, delay_sum_acc / num_trials,
+            inc_time_acc / num_trials, dec_time_acc / num_trials);
       }
     }
   }
+
+  fclose(result_file);
 
   return 0;
 }
