@@ -1,3 +1,21 @@
+/*
+ * UCLA CS133 - Parallel and Distributed Programming
+ *
+ * This program was used to empirically test whether it's better to schedule
+ * jobs of heterogenous length in increasing or decreasing order of job length.
+ *
+ * My tests show that scheduling jobs in decreasing order of job length is
+ * almost always faster, as intuition suggests.
+ *
+ * I was unable to formalize the problem in a mathematically satisfying way, so
+ * I went with this approach. I initially planned on testing this with OpenMP
+ * since that's one of the APIs we're learning in class, but decided to go with
+ * a simulation-based approach to avoid any possible influence from OpenMP /
+ * Linux sleep overheads.
+ *
+ * This program has no external dependencies.
+ */
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +52,7 @@ int* get_rand_delays(unsigned int n_delays, int max_delay,
     fprintf(stderr, "Could not allocate delay array.\n");
     return NULL;
   }
-  int i;
+  unsigned int i;
   for (i = 0; i < n_delays; i++) {
     delays[i] = (rand() % max_delay) + 1;
   }
@@ -112,6 +130,7 @@ void test()
       assert(inc[i] == dec[100-i-1]);
     }
   }
+
   printf("All tests passed.\n");
 }
 
@@ -120,14 +139,17 @@ int main()
   test();
 
   int i, j, num_processors, num_jobs, max_delay;
-  int num_trials = 100; // 100 trials per processor/job configuration
+  int num_trials = 100; // 100 trials per processor/job configuration to reduce
+      // variance from get_rand_delays
   int *delays;
   srand(time(NULL));
   unsigned int rand_seed;
 
   // 4, 8, 16 and 32 processors
   for (num_processors = 2; num_processors <= 64; num_processors *= 2) {
+    // 10, 100 and 1000 jobs
     for (num_jobs = 10; num_jobs <= 1000; num_jobs *= 10) {
+      // 100, 1000 and 10000 maximum delay. Minimum delay is implicitly 1.
       for (max_delay = 100; max_delay <= 10000; max_delay *= 10) {
         unsigned long long inc_time_acc = 0, dec_time_acc = 0;
         unsigned long long delay_sum_acc = 0;
